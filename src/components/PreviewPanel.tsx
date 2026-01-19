@@ -1,7 +1,8 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useProjectStore, useTotalDuration } from '../stores/projectStore';
 import { formatDuration } from '../utils/mediaUtils';
+import type { MediaFile } from '../types';
 
 // Binary search to find segment containing given time - O(log n) instead of O(n)
 function findSegmentIndex(segments: Array<{ startTime: number; endTime: number }>, time: number): number {
@@ -27,40 +28,20 @@ function findSegmentIndex(segments: Array<{ startTime: number; endTime: number }
   return segments.length - 1;
 }
 
-// Throttle function for scrubber updates
-function useThrottle<T>(value: T, limit: number): T {
-  const [throttledValue, setThrottledValue] = useState(value);
-  const lastRan = useRef(Date.now());
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (Date.now() - lastRan.current >= limit) {
-        setThrottledValue(value);
-        lastRan.current = Date.now();
-      }
-    }, limit - (Date.now() - lastRan.current));
-
-    return () => clearTimeout(handler);
-  }, [value, limit]);
-
-  return throttledValue;
-}
-
 export function PreviewPanel() {
-  // Granular selectors - only subscribe to what's needed (#5)
+  // Granular selectors - only subscribe to what's needed
   const mediaFiles = useProjectStore((state) => state.mediaFiles);
   const cover = useProjectStore((state) => state.cover);
   const selectedPreset = useProjectStore((state) => state.selectedPreset);
   const previewTime = useProjectStore((state) => state.previewTime);
   const setPreviewTime = useProjectStore((state) => state.setPreviewTime);
+  const isPlaying = useProjectStore((state) => state.isPlaying);
+  const setIsPlaying = useProjectStore((state) => state.setIsPlaying);
 
   const totalDuration = useTotalDuration();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const coverTimerRef = useRef<number | null>(null);
-
-  // Throttle preview time for display updates (#10)
-  const throttledPreviewTime = useThrottle(previewTime, 33); // ~30fps
+  const lastUpdateRef = useRef(0);
 
   // Calculate timeline segments for each item (memoized)
   const segments = useMemo(() => {
@@ -81,11 +62,21 @@ export function PreviewPanel() {
     return result;
   }, [mediaFiles, cover]);
 
-  // Find current segment using binary search (#3)
+  // Find current segment using binary search
   const currentSegment = useMemo(() => {
     const index = findSegmentIndex(segments, previewTime);
     return index >= 0 ? segments[index] : null;
   }, [segments, previewTime]);
+
+  // Get only video files for preloading
+  const videoFiles = useMemo(() => {
+    return mediaFiles.filter((f): f is MediaFile & { type: 'video' } => f.type === 'video');
+  }, [mediaFiles]);
+
+  // Get only image files
+  const imageFiles = useMemo(() => {
+    return mediaFiles.filter((f): f is MediaFile & { type: 'image' } => f.type === 'image');
+  }, [mediaFiles]);
 
   // Get aspect ratio from preset
   const aspectRatio = selectedPreset
@@ -102,14 +93,14 @@ export function PreviewPanel() {
   }, []);
 
   // Handle video time updates - throttled internally
-  const lastUpdateRef = useRef(0);
-  const handleVideoTimeUpdate = useCallback(() => {
+  const handleVideoTimeUpdate = useCallback((videoId: string) => {
     const now = Date.now();
     if (now - lastUpdateRef.current < 33) return; // Throttle to ~30fps
     lastUpdateRef.current = now;
 
-    if (videoRef.current && currentSegment?.type === 'media' && isPlaying) {
-      const newTime = currentSegment.startTime + videoRef.current.currentTime;
+    const video = videoRefs.current.get(videoId);
+    if (video && currentSegment?.type === 'media' && currentSegment.item.id === videoId && isPlaying) {
+      const newTime = currentSegment.startTime + video.currentTime;
       setPreviewTime(Math.min(newTime, totalDuration));
     }
   }, [currentSegment, setPreviewTime, totalDuration, isPlaying]);
@@ -127,7 +118,7 @@ export function PreviewPanel() {
       setIsPlaying(false);
       setPreviewTime(0);
     }
-  }, [currentSegment, segments, setPreviewTime]);
+  }, [currentSegment, segments, setPreviewTime, setIsPlaying]);
 
   // Handle cover timer during playback
   useEffect(() => {
@@ -163,46 +154,52 @@ export function PreviewPanel() {
         }
       };
     }
-  }, [isPlaying, currentSegment, segments, previewTime, setPreviewTime]);
+  }, [isPlaying, currentSegment, segments, previewTime, setPreviewTime, setIsPlaying]);
 
   // Sync video playback when segment changes or play state changes
   useEffect(() => {
-    if (!videoRef.current || !currentSegment || currentSegment.type !== 'media') return;
+    if (!currentSegment || currentSegment.type !== 'media' || currentSegment.item.type !== 'video') {
+      // Pause all videos when not on a video segment
+      videoRefs.current.forEach((video) => {
+        if (!video.paused) video.pause();
+      });
+      return;
+    }
 
-    const video = videoRef.current;
+    const currentVideoId = currentSegment.item.id;
+    const video = videoRefs.current.get(currentVideoId);
+    if (!video) return;
+
     const videoTime = previewTime - currentSegment.startTime;
 
-    if (Math.abs(video.currentTime - videoTime) > 0.3) {
+    // Seek if needed (threshold reduced for smoother scrubbing)
+    if (Math.abs(video.currentTime - videoTime) > 0.1) {
       video.currentTime = Math.max(0, Math.min(videoTime, video.duration || Infinity));
     }
 
+    // Play/pause based on state
     if (isPlaying && video.paused) {
       video.play().catch(() => {});
     } else if (!isPlaying && !video.paused) {
       video.pause();
     }
+
+    // Pause all other videos
+    videoRefs.current.forEach((v, id) => {
+      if (id !== currentVideoId && !v.paused) {
+        v.pause();
+      }
+    });
   }, [isPlaying, currentSegment, previewTime]);
 
-  // Handle scrubber change with ref for immediate video seeking
-  const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
-    setPreviewTime(newTime);
-    setIsPlaying(false);
-
-    // Immediate video seek using ref (not dependent on state update)
-    if (videoRef.current) {
-      const segIndex = findSegmentIndex(segments, newTime);
-      if (segIndex >= 0) {
-        const seg = segments[segIndex];
-        if (seg.type === 'media') {
-          const videoTime = newTime - seg.startTime;
-          if (videoTime >= 0) {
-            videoRef.current.currentTime = videoTime;
-          }
-        }
-      }
+  // Register video ref
+  const setVideoRef = useCallback((id: string, el: HTMLVideoElement | null) => {
+    if (el) {
+      videoRefs.current.set(id, el);
+    } else {
+      videoRefs.current.delete(id);
     }
-  }, [segments, setPreviewTime]);
+  }, []);
 
   // Toggle play/pause
   const togglePlay = useCallback(() => {
@@ -210,81 +207,117 @@ export function PreviewPanel() {
 
     if (isPlaying) {
       setIsPlaying(false);
-      if (videoRef.current) {
-        videoRef.current.pause();
-      }
     } else {
       if (previewTime >= totalDuration - 0.1) {
         setPreviewTime(0);
       }
       setIsPlaying(true);
     }
-  }, [segments.length, isPlaying, previewTime, totalDuration, setPreviewTime]);
+  }, [segments.length, isPlaying, previewTime, totalDuration, setPreviewTime, setIsPlaying]);
+
+  // Handle scrubber change
+  const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(e.target.value);
+    setPreviewTime(newTime);
+    setIsPlaying(false);
+
+    // Find the segment at the new time and seek immediately
+    const segIndex = findSegmentIndex(segments, newTime);
+    if (segIndex >= 0) {
+      const seg = segments[segIndex];
+      if (seg.type === 'media' && seg.item.type === 'video') {
+        const video = videoRefs.current.get(seg.item.id);
+        if (video) {
+          const videoTime = newTime - seg.startTime;
+          if (videoTime >= 0) {
+            video.currentTime = videoTime;
+          }
+        }
+      }
+    }
+  }, [segments, setPreviewTime, setIsPlaying]);
 
   const hasContent = mediaFiles.length > 0 || cover.text.trim().length > 0;
+  const showCover = cover.text.trim().length > 0;
+  const currentItemId = currentSegment?.type === 'media' ? currentSegment.item.id : null;
+  const showCoverPreview = currentSegment?.type === 'cover';
 
   return (
     <div className="h-full flex flex-col">
       {/* Preview area with selected aspect ratio */}
       <div className="flex-1 flex items-center justify-center p-2 bg-gray-900/50 rounded-xl min-h-0 overflow-hidden">
         <div
-          className="relative bg-black rounded-lg overflow-hidden shadow-2xl flex items-center justify-center"
+          className="relative bg-black rounded-lg overflow-hidden shadow-2xl"
           style={{
             aspectRatio,
-            maxWidth: '100%',
+            width: '100%',
             maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
           }}
         >
           {!hasContent ? (
-            <div className="flex flex-col items-center justify-center text-gray-500 p-8">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 p-8">
               <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               <p className="text-sm">Preview will appear here</p>
             </div>
-          ) : currentSegment?.type === 'cover' ? (
-            <div className={`absolute inset-0 flex items-center justify-center p-8 ${
-              cover.colorScheme === 'blackOnWhite' ? 'bg-white' : 'bg-black'
-            }`}>
-              <p
-                className={`font-bold text-center break-words leading-tight ${
-                  cover.colorScheme === 'blackOnWhite' ? 'text-black' : 'text-white'
-                }`}
-                style={{
-                  fontFamily: "'Open Sans', sans-serif",
-                  fontSize: 'clamp(16px, 5vw, 48px)',
-                }}
-              >
-                {cover.text}
-              </p>
-            </div>
-          ) : currentSegment?.type === 'media' ? (
-            currentSegment.item.type === 'video' ? (
-              <video
-                key={currentSegment.item.id}
-                ref={videoRef}
-                src={getFileSrc(currentSegment.item.path)}
-                className="max-w-full max-h-full object-contain"
-                onTimeUpdate={handleVideoTimeUpdate}
-                onEnded={handleVideoEnded}
-                onPause={() => !isPlaying && setIsPlaying(false)}
-                playsInline
-              />
-            ) : (
-              <img
-                key={currentSegment.item.id}
-                src={getFileSrc(currentSegment.item.path)}
-                alt={currentSegment.item.name}
-                className="max-w-full max-h-full object-contain"
-              />
-            )
-          ) : null}
+          ) : (
+            <>
+              {/* Cover overlay */}
+              {showCover && (
+                <div
+                  className={`absolute inset-0 flex items-center justify-center p-8 transition-opacity duration-150 ${
+                    showCoverPreview ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
+                  } ${cover.colorScheme === 'blackOnWhite' ? 'bg-white' : 'bg-black'}`}
+                >
+                  <p
+                    className={`font-bold text-center break-words leading-tight whitespace-pre-wrap ${
+                      cover.colorScheme === 'blackOnWhite' ? 'text-black' : 'text-white'
+                    }`}
+                    style={{
+                      fontFamily: "'Open Sans', sans-serif",
+                      fontSize: 'clamp(16px, 5vw, 48px)',
+                    }}
+                  >
+                    {cover.text}
+                  </p>
+                </div>
+              )}
+
+              {/* Preloaded videos - all mounted, only current one visible */}
+              {videoFiles.map((file) => (
+                <video
+                  key={file.id}
+                  ref={(el) => setVideoRef(file.id, el)}
+                  src={getFileSrc(file.path)}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-75 ${
+                    currentItemId === file.id && !showCoverPreview ? 'opacity-100 z-5' : 'opacity-0 pointer-events-none'
+                  }`}
+                  onTimeUpdate={() => handleVideoTimeUpdate(file.id)}
+                  onEnded={handleVideoEnded}
+                  preload="auto"
+                  playsInline
+                  muted={currentItemId !== file.id}
+                />
+              ))}
+
+              {/* Images - only render current one */}
+              {imageFiles.map((file) => (
+                <img
+                  key={file.id}
+                  src={getFileSrc(file.path)}
+                  alt={file.name}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-75 ${
+                    currentItemId === file.id && !showCoverPreview ? 'opacity-100 z-5' : 'opacity-0 pointer-events-none'
+                  }`}
+                />
+              ))}
+            </>
+          )}
 
           {/* Preset overlay */}
           {selectedPreset && (
-            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white">
+            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white z-20">
               {selectedPreset.name} • {selectedPreset.width}×{selectedPreset.height}
             </div>
           )}
@@ -326,7 +359,7 @@ export function PreviewPanel() {
                 min={0}
                 max={totalDuration || 1}
                 step={0.01}
-                value={throttledPreviewTime}
+                value={previewTime}
                 onChange={handleTimeChange}
                 className="relative w-full h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer z-10
                   [&::-webkit-slider-thumb]:appearance-none
@@ -342,7 +375,7 @@ export function PreviewPanel() {
             </div>
 
             <span className="text-xs text-gray-400 font-mono min-w-[80px] text-right">
-              {formatDuration(throttledPreviewTime)} / {formatDuration(totalDuration)}
+              {formatDuration(previewTime)} / {formatDuration(totalDuration)}
             </span>
           </div>
         </div>

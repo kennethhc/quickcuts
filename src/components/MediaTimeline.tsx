@@ -157,15 +157,19 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
 interface CoverItemProps {
   text: string;
   duration: number;
+  colorScheme: 'blackOnWhite' | 'whiteOnBlack';
 }
 
-function CoverItem({ text, duration }: CoverItemProps) {
+function CoverItem({ text, duration, colorScheme }: CoverItemProps) {
+  const isBlackOnWhite = colorScheme === 'blackOnWhite';
+
   return (
-    <div className="
-      flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden
-      bg-white border-2 border-indigo-500 flex flex-col items-center justify-center
-    ">
-      <p className="text-black text-[10px] font-bold text-center px-1 line-clamp-2">
+    <div className={`
+      flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden relative
+      border-2 border-indigo-500 flex flex-col items-center justify-center
+      ${isBlackOnWhite ? 'bg-white' : 'bg-black'}
+    `}>
+      <p className={`text-[10px] font-bold text-center px-1 line-clamp-2 ${isBlackOnWhite ? 'text-black' : 'text-white'}`}>
         {text || 'Cover'}
       </p>
       <div className="absolute bottom-0 left-0 right-0 px-1.5 py-0.5 bg-indigo-500">
@@ -272,7 +276,7 @@ export function MediaTimeline() {
         <div className="flex items-center gap-2 min-w-max">
           {showCover && (
             <>
-              <CoverItem text={cover.text} duration={cover.duration} />
+              <CoverItem text={cover.text} duration={cover.duration} colorScheme={cover.colorScheme} />
               <div className="w-px h-12 bg-gray-600" />
             </>
           )}
