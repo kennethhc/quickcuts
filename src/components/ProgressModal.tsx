@@ -47,55 +47,55 @@ export function ProgressModal({ outputPath, onClose }: ProgressModalProps) {
   const error = exportProgress?.error;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-base)]/80 backdrop-blur-sm">
+      <div className="w-full max-w-md mx-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-default)] shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-800">
-          <h2 className="text-lg font-semibold text-white">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)]">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
             {showSuccess ? 'Export Complete' : error ? 'Export Failed' : 'Exporting...'}
           </h2>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6">
+        <div className="px-5 py-6">
           {showSuccess ? (
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 mx-auto rounded-full bg-[var(--success)]/20 flex items-center justify-center">
+                <svg className="w-7 h-7 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <p className="text-white font-medium">Your video has been exported!</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-[var(--text-primary)] font-medium">Your video has been exported!</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">
                   Saved to Downloads folder
                 </p>
               </div>
               {outputPath && (
-                <p className="text-xs text-gray-500 break-all px-4">
+                <p className="text-xs text-[var(--text-tertiary)] font-mono break-all px-4">
                   {outputPath.split('/').pop()}
                 </p>
               )}
             </div>
           ) : error ? (
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-red-500/20 flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 mx-auto rounded-full bg-[var(--error)]/20 flex items-center justify-center">
+                <svg className="w-7 h-7 text-[var(--error)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <div>
-                <p className="text-white font-medium">Export failed</p>
-                <p className="text-sm text-red-400 mt-1">{error}</p>
+                <p className="text-[var(--text-primary)] font-medium">Export failed</p>
+                <p className="text-sm text-[var(--error)] mt-1">{error}</p>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Status */}
               <div className="text-center">
-                <p className="text-white font-medium">{STAGE_LABELS[stage]}</p>
+                <p className="text-[var(--text-primary)] font-medium">{STAGE_LABELS[stage]}</p>
                 {currentFile && (
-                  <p className="text-sm text-gray-400 mt-1 truncate">
+                  <p className="text-sm text-[var(--text-secondary)] mt-1 truncate">
                     {currentFile}
                   </p>
                 )}
@@ -103,15 +103,15 @@ export function ProgressModal({ outputPath, onClose }: ProgressModalProps) {
 
               {/* Progress bar */}
               <div className="space-y-2">
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="progress-track h-1.5">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300 progress-bar"
+                    className="progress-fill"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>{STAGE_LABELS[stage]}</span>
-                  <span>{Math.round(progress)}%</span>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-tertiary)]">{STAGE_LABELS[stage]}</span>
+                  <span className="text-[var(--text-secondary)] font-mono">{Math.round(progress)}%</span>
                 </div>
               </div>
             </div>
@@ -119,18 +119,18 @@ export function ProgressModal({ outputPath, onClose }: ProgressModalProps) {
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 border-t border-gray-800 flex gap-3">
+        <div className="px-5 py-4 border-t border-[var(--border-subtle)] flex gap-3">
           {showSuccess ? (
             <>
               <button
                 onClick={handleOpenInFinder}
-                className="flex-1 py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
+                className="btn-secondary flex-1"
               >
                 Open in Finder
               </button>
               <button
                 onClick={handleClose}
-                className="flex-1 py-2.5 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium text-sm transition-colors"
+                className="btn-primary flex-1"
               >
                 Done
               </button>
@@ -138,14 +138,14 @@ export function ProgressModal({ outputPath, onClose }: ProgressModalProps) {
           ) : error ? (
             <button
               onClick={handleClose}
-              className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
+              className="btn-secondary w-full"
             >
               Close
             </button>
           ) : (
             <button
               onClick={cancelExport}
-              className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
+              className="btn-secondary w-full"
             >
               Cancel
             </button>

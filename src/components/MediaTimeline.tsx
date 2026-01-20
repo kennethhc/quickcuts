@@ -89,11 +89,7 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
-      className={`
-        timeline-item relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden
-        bg-gray-800 border border-gray-700 cursor-grab active:cursor-grabbing
-        group select-none
-      `}
+      className="timeline-item relative flex-shrink-0 w-24 h-20 rounded-md overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-default)] cursor-grab active:cursor-grabbing group select-none"
     >
       {/* Thumbnail */}
       {file.thumbnail ? (
@@ -104,13 +100,13 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
           draggable={false}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gray-700">
+        <div className="w-full h-full flex items-center justify-center bg-[var(--bg-hover)]">
           {file.type === 'video' ? (
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           ) : (
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[var(--text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           )}
@@ -119,17 +115,18 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
 
       {/* Type badge */}
       <div className="absolute top-1 left-1">
-        <span className={`
-          px-1.5 py-0.5 text-[10px] font-medium rounded
-          ${file.type === 'video' ? 'bg-blue-500/80 text-white' : 'bg-green-500/80 text-white'}
-        `}>
+        <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+          file.type === 'video'
+            ? 'bg-[var(--accent)]/90 text-[var(--text-inverse)]'
+            : 'bg-[var(--border-strong)] text-[var(--text-primary)]'
+        }`}>
           {file.type === 'video' ? 'VID' : 'IMG'}
         </span>
       </div>
 
       {/* Duration */}
-      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-0.5 bg-black/70">
-        <p className="text-[10px] text-white text-center font-medium">
+      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-0.5 bg-black/80">
+        <p className="text-[10px] text-[var(--text-primary)] text-center font-mono">
           {formatDuration(file.duration)}
         </p>
       </div>
@@ -140,11 +137,7 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
           e.stopPropagation();
           onRemove(file.id);
         }}
-        className="
-          absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80
-          flex items-center justify-center opacity-0 group-hover:opacity-100
-          transition-opacity hover:bg-red-500
-        "
+        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[var(--error)]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--error)]"
       >
         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -156,27 +149,22 @@ function SortableItem({ file, onRemove, onPreview }: SortableItemProps) {
 
 interface CoverItemProps {
   text: string;
-  duration: number;
   colorScheme: 'blackOnWhite' | 'whiteOnBlack';
 }
 
-function CoverItem({ text, duration, colorScheme }: CoverItemProps) {
+function CoverItem({ text, colorScheme }: CoverItemProps) {
   const isBlackOnWhite = colorScheme === 'blackOnWhite';
 
   return (
-    <div className={`
-      flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden relative
-      border-2 border-indigo-500 flex flex-col items-center justify-center
-      ${isBlackOnWhite ? 'bg-white' : 'bg-black'}
-    `}>
+    <div className={`flex-shrink-0 w-24 h-20 rounded-md overflow-hidden relative border-2 border-[var(--accent)] flex flex-col items-center justify-center ${isBlackOnWhite ? 'bg-white' : 'bg-black'}`}>
+      <div className="absolute top-1 left-1">
+        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--accent)]/90 text-[var(--text-inverse)]">
+          COVER
+        </span>
+      </div>
       <p className={`text-[10px] font-bold text-center px-1 line-clamp-2 ${isBlackOnWhite ? 'text-black' : 'text-white'}`}>
         {text || 'Cover'}
       </p>
-      <div className="absolute bottom-0 left-0 right-0 px-1.5 py-0.5 bg-indigo-500">
-        <p className="text-[10px] text-white text-center font-medium">
-          {formatDuration(duration)}
-        </p>
-      </div>
     </div>
   );
 }
@@ -189,8 +177,8 @@ function VideoPreviewPopup({ file }: VideoPreviewPopupProps) {
   const videoSrc = convertFileSrc(file.path);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 pointer-events-none">
-      <div className="relative max-w-[80vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-base)]/90 backdrop-blur-sm pointer-events-none">
+      <div className="relative max-w-[80vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl border border-[var(--border-default)]">
         <video
           src={videoSrc}
           autoPlay
@@ -198,7 +186,7 @@ function VideoPreviewPopup({ file }: VideoPreviewPopupProps) {
           loop
           className="max-w-full max-h-[80vh] object-contain"
         />
-        <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 rounded text-white text-xs">
+        <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/80 rounded text-[var(--text-primary)] text-xs font-mono">
           {file.name}
         </div>
       </div>
@@ -240,7 +228,7 @@ export function MediaTimeline() {
 
   if (!hasMedia) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500">
+      <div className="h-full flex items-center justify-center text-[var(--text-tertiary)]">
         <p className="text-sm">No media added yet</p>
       </div>
     );
@@ -249,21 +237,21 @@ export function MediaTimeline() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-700">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-medium text-gray-300">Timeline</h3>
-          <span className="text-xs text-gray-500">
+          <h3 className="section-label">Timeline</h3>
+          <span className="text-xs text-[var(--text-tertiary)]">
             {mediaFiles.length} item{mediaFiles.length !== 1 ? 's' : ''}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">
-            Total: {formatDuration(totalDuration)}
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-[var(--text-secondary)] font-mono">
+            {formatDuration(totalDuration)}
           </span>
           {mediaFiles.length > 0 && (
             <button
               onClick={clearMediaFiles}
-              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+              className="text-xs text-[var(--error)] hover:text-[var(--error)]/80 transition-colors"
             >
               Clear all
             </button>
@@ -276,8 +264,8 @@ export function MediaTimeline() {
         <div className="flex items-center gap-2 min-w-max">
           {showCover && (
             <>
-              <CoverItem text={cover.text} duration={cover.duration} colorScheme={cover.colorScheme} />
-              <div className="w-px h-12 bg-gray-600" />
+              <CoverItem text={cover.text} colorScheme={cover.colorScheme} />
+              <div className="w-px h-12 bg-[var(--border-default)]" />
             </>
           )}
 

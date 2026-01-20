@@ -245,9 +245,9 @@ export function PreviewPanel() {
   return (
     <div className="h-full flex flex-col">
       {/* Preview area with selected aspect ratio */}
-      <div className="flex-1 flex items-center justify-center p-2 bg-gray-900/50 rounded-xl min-h-0 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg min-h-0 overflow-hidden">
         <div
-          className="relative bg-black rounded-lg overflow-hidden shadow-2xl"
+          className="relative bg-black rounded overflow-hidden"
           style={{
             aspectRatio,
             width: '100%',
@@ -255,11 +255,11 @@ export function PreviewPanel() {
           }}
         >
           {!hasContent ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 p-8">
-              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-tertiary)] p-8">
+              <svg className="w-10 h-10 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              <p className="text-sm">Preview will appear here</p>
+              <p className="text-xs">Preview will appear here</p>
             </div>
           ) : (
             <>
@@ -317,8 +317,8 @@ export function PreviewPanel() {
 
           {/* Preset overlay */}
           {selectedPreset && (
-            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white z-20">
-              {selectedPreset.name} • {selectedPreset.width}×{selectedPreset.height}
+            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 rounded text-[10px] text-[var(--text-secondary)] font-mono z-20">
+              {selectedPreset.width}×{selectedPreset.height}
             </div>
           )}
         </div>
@@ -326,33 +326,31 @@ export function PreviewPanel() {
 
       {/* Timeline scrubber */}
       {hasContent && (
-        <div className="flex-shrink-0 pt-3 pb-1 px-4">
+        <div className="flex-shrink-0 pt-3 px-1">
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-500 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border-default)] transition-colors"
             >
               {isPlaying ? (
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-[var(--text-primary)]" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-[var(--text-primary)] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
             </button>
 
-            <div className="flex-1 relative">
-              {/* Segment markers */}
-              <div className="absolute inset-0 flex pointer-events-none rounded-full overflow-hidden">
-                {segments.map((seg, i) => (
-                  <div
-                    key={i}
-                    className={`h-full ${seg.type === 'cover' ? 'bg-purple-500/30' : 'bg-indigo-500/30'}`}
-                    style={{ width: `${((seg.endTime - seg.startTime) / totalDuration) * 100}%` }}
-                  />
-                ))}
+            <div className="flex-1 relative h-4 flex items-center">
+              {/* Track background */}
+              <div className="absolute inset-x-0 h-1 bg-[var(--bg-elevated)] rounded-sm overflow-hidden">
+                {/* Progress fill */}
+                <div
+                  className="h-full bg-[var(--accent)]"
+                  style={{ width: `${(previewTime / (totalDuration || 1)) * 100}%` }}
+                />
               </div>
               <input
                 type="range"
@@ -361,20 +359,11 @@ export function PreviewPanel() {
                 step={0.01}
                 value={previewTime}
                 onChange={handleTimeChange}
-                className="relative w-full h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer z-10
-                  [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:w-3
-                  [&::-webkit-slider-thumb]:h-3
-                  [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-indigo-500
-                  [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-webkit-slider-thumb]:hover:bg-indigo-400
-                  [&::-webkit-slider-thumb]:shadow-lg
-                "
+                className="relative w-full h-4 bg-transparent cursor-pointer z-10"
               />
             </div>
 
-            <span className="text-xs text-gray-400 font-mono min-w-[80px] text-right">
+            <span className="text-[11px] text-[var(--text-tertiary)] font-mono min-w-[72px] text-right tabular-nums">
               {formatDuration(previewTime)} / {formatDuration(totalDuration)}
             </span>
           </div>
